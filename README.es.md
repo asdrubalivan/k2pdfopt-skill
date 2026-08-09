@@ -166,7 +166,7 @@ docs/                        assets de este README y herramientas de mantenimien
 
 ## Licencia
 
-Todavía no hay archivo de licencia — pendiente.
+[MIT](LICENSE)
 
 ## Créditos
 

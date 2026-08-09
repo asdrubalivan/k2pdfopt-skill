@@ -154,7 +154,7 @@ docs/                        this README's assets and maintenance tooling
 
 ## License
 
-No license file yet — TBD.
+[MIT](LICENSE)
 
 ## Credits
 
