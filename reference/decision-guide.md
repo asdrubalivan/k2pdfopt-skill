@@ -57,6 +57,16 @@ source has a real text layer / was exported from an ebook, not scanned),
 try `fw` first — it's far less likely to mangle an already-good layout than
 forcing a reflow.
 
+**Base the mode choice on the Step 2 working input, not blindly on Step 1's
+raw `image_only`.** If Step 2 flattened the source (because `image_only` or
+`full_page_scan_images` was true), the working input handed to k2pdfopt is
+now a pure-image PDF with no text layer at all — treat it as `image_only`
+for mode purposes (use `def`) even if the *original* file's `image_only`
+came back false. `fw`'s whole benefit is preserving a real, already-good
+native text layer; once that layer no longer exists in the working input,
+`fw` gives up its reflow-avoidance benefit for nothing and there's no
+reason to prefer it over `def`.
+
 ## Device profiles (`-dev`)
 
 Default is `-dev kindle2` if omitted. Run `-dev ?` (already captured in
@@ -151,17 +161,50 @@ Many k2pdfopt builds are not linked against a JPEG2000 decoder, so feeding
 a JP2-embedded PDF straight in can fail outright or silently produce
 blank/corrupted pages. poppler (which `inspect_pdf.py` and `pdftoppm` use)
 reliably decodes JP2. When `inspect_pdf.py` reports `has_jpeg2000: true`
-**and** `image_only: true`, pre-flatten with `flatten_jp2_to_jpeg.py` before
-handing the file to k2pdfopt — this sidesteps the decoder gap entirely by
-letting poppler do the JP2 decode once, up front. (The installed v2.55
-build does report `w/MuPDF` support, which bundles OpenJPEG — so JP2 may
-work directly; flattening first is still the safer default since a failure
-here is silent/hard to detect, not a crash.)
+**and** (`image_only: true` **or** `full_page_scan_images: true`),
+pre-flatten with `flatten_jp2_to_jpeg.py` before handing the file to
+k2pdfopt — this sidesteps the decoder gap entirely by letting poppler do
+the JP2 decode once, up front. (The installed v2.55 build does report
+`w/MuPDF` support, which bundles OpenJPEG — so JP2 may work directly;
+flattening first is still the safer default since a failure here is
+silent/hard to detect, not a crash.)
 
-Do **not** flatten when `image_only` is false — the PDF has a live text
-layer worth preserving, and rasterizing would destroy it. In that mixed
-case, run k2pdfopt directly on the original file and only take the
-symptom-driven fallback below if it actually fails.
+There's a second, separate reason to flatten beyond "will k2pdfopt itself
+choke on the decode": **on-device CPU cost.** JPEG2000 decodes far more
+expensively than plain JPEG — cheap enough for a desktop CPU to not
+notice, expensive enough that it near-reliably hangs or crawls on
+e-reader-class processors, on both Kindle and Kobo hardware (not a
+one-device quirk — both run comparably weak CPUs), even on a small file.
+This is a rendering-time problem on the target device, not a
+conversion-time problem on your machine, so k2pdfopt converting
+successfully and quickly on the desktop is **not** evidence the output
+will be fine on the device — confirmed the hard way on a real Internet
+Archive/Scribe scan (84 pages, three JPX/JBIG2 image layers per page):
+`k2pdfopt -mode fw` on the un-flattened source completed in seconds and
+produced a normal-looking, normal-sized output PDF, but `pdfimages -list`
+on that output showed the same JPX/JBIG2 layers passed straight through
+untouched — `-mode fw`'s native output preserves the source's original
+image data as-is, codec and all, it does not re-encode it. The fix only
+lands if the flatten actually ran *before* k2pdfopt, not after. Treat
+`has_jpeg2000: true` as a near-default flatten trigger for this reason
+alone, not just as an insurance policy against a decoder gap.
+
+**Why `image_only` alone isn't a reliable flatten gate:** it answers "is
+there any extractable text at all?", which reads true for a scanned book
+that carries an invisible OCR text layer (e.g. Internet Archive/Scribe
+output) — the page is still 100% the scanned image visually, but the OCR
+layer alone flips `image_only` to false. `full_page_scan_images` answers
+the question that actually matters here — "is the dominant image on each
+sampled page roughly the size of the whole page?" — independent of
+whether a text layer is also present. Gate flattening on `has_jpeg2000`
+**and** (`image_only` **or** `full_page_scan_images`).
+
+Do **not** flatten when both `image_only` and `full_page_scan_images` are
+false — that's a genuinely mixed document (a native/typeset book with a
+handful of JPEG2000-encoded figures), where the PDF has a live text layer
+worth preserving and rasterizing the whole book would destroy it for
+minimal benefit. In that case, run k2pdfopt directly on the original file
+and only take the symptom-driven fallback below if it actually fails.
 
 ## Symptom → flag to adjust
 

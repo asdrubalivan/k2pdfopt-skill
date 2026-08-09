@@ -1,16 +1,31 @@
 #!/usr/bin/env python3
 """Pre-flatten a pure-image, JPEG2000-backed PDF to a JPEG-backed PDF.
 
-Why this exists: many k2pdfopt builds are not linked against a JPEG2000
-decoder (jasper/openjpeg), so feeding a JP2-embedded PDF straight to
-k2pdfopt can fail outright or silently produce blank/corrupted pages.
+Why this exists: two independent reasons.
+
+1. Many k2pdfopt builds are not linked against a JPEG2000 decoder
+   (jasper/openjpeg), so feeding a JP2-embedded PDF straight to k2pdfopt
+   can fail outright or silently produce blank/corrupted pages.
+2. Even when k2pdfopt *can* decode it, JPEG2000 is expensive enough to
+   decode that it near-reliably hangs or crawls on e-reader-class CPUs
+   (both Kindle and Kobo) at render time on the device -- a problem a
+   fast, successful desktop conversion will not reveal, since k2pdfopt's
+   native-mode output (`-mode fw`/`tm`/`2col`) passes the original image
+   data through untouched rather than re-encoding it.
+
 poppler (pdftoppm) reliably decodes JP2, so we rasterize each page through
 poppler and re-wrap the JPEGs into a new PDF -- then hand *that* to
 k2pdfopt instead of the original.
 
-Only use this on pages that are genuinely image-only (see inspect_pdf.py's
-"image_only" field). Rasterizing a page that carries live text would bake
-that text into a picture and destroy the text layer.
+Only use this when inspect_pdf.py's "image_only" OR "full_page_scan_images"
+field is true. Don't use "image_only" alone as the gate -- it reads false
+for a scanned book that carries an invisible OCR text layer (e.g. Internet
+Archive/Scribe output), even though the page is still 100% the scanned
+image visually; "full_page_scan_images" catches that case.
+Rasterizing a page that carries a *real, live* text layer worth preserving
+(a genuinely mixed native/typeset document with a few JPEG2000 figures)
+would bake that text into a picture and destroy it -- that's the case
+where neither field is true and this script should not run.
 
 Usage:
   flatten_jp2_to_jpeg.py <input.pdf> <output.pdf> [--dpi 300] [--quality 90]

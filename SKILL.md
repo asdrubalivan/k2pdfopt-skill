@@ -35,18 +35,21 @@ Done when: a validated binary path is in hand.
 ## Step 1: Inspect the source PDF
 
 Run `scripts/inspect_pdf.py <source.pdf>`. Read `page_count`, `image_only`,
-and `has_jpeg2000` from its JSON output — every later step branches on
-these.
+`full_page_scan_images`, and `has_jpeg2000` from its JSON output — every
+later step branches on these.
 
 Done when: that JSON has been read and parsed, not just produced.
 
 ## Step 2: Pre-flatten JPEG2000 if needed
 
-If `has_jpeg2000` and `image_only` are both true, run
+If `has_jpeg2000` is true and **either** `image_only` **or**
+`full_page_scan_images` is true, run
 `scripts/flatten_jp2_to_jpeg.py <source.pdf> <flattened.pdf>` and use
 `<flattened.pdf>` as the input for every step from here on. See
-`reference/decision-guide.md` for why this only applies to image-only
-pages. Otherwise skip straight to Step 3 with the original file.
+`reference/decision-guide.md` for why both signals matter — `image_only`
+alone misses scanned books that carry an invisible OCR text layer (it
+reads as "has text", but the page is still 100% the scanned image
+underneath). Otherwise skip straight to Step 3 with the original file.
 
 Done when: the working input file for Step 4 is decided.
 
@@ -126,7 +129,7 @@ For each output file:
    labeled page against the checklist in `reference/quality-checklist.md`
    — this is the token-efficient way to look at ~30 pages: a couple of
    image reads instead of ~30.
-4. If `image_only` was true in Step 1, also run
+4. If `image_only` or `full_page_scan_images` was true in Step 1, also run
    `scripts/check_output_weight.py <output.pdf> --image-only`.
 
 When multiple target devices share the same source and the same `-mode`
