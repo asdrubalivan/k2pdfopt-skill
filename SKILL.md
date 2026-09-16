@@ -92,11 +92,34 @@ numeric target, generate 2-3 candidate renders and let them choose visually:
 Done when: a calibrated `-fs` (or user-picked size) is set for every target
 device that needs one.
 
+## Step 3.75: Preview before the full run
+
+Skip this step only if Step 3.5 already rendered and showed a calibrated
+preview for every target device — that satisfies this step too.
+
+Otherwise, before spending 60-150s+ per device on the full book, render a
+fast preview so the user sees real output before committing to the full
+run:
+
+1. Pick a small representative page range from the Step 2 working input
+   (e.g. 5 body-text pages, skipping cover/front matter) — the same range
+   for every device.
+2. For each target device, run the resolved binary with `-p <range>` and
+   the exact flags planned for the full run (mode, `-dev`/geometry),
+   writing to a throwaway preview file.
+3. `scripts/rasterize_pages.py` 1-2 pages from each device's preview
+   output and `scripts/build_contact_sheet.py` into one labeled sheet;
+   Read it (the Read tool displays images) so the user sees the preview
+   before the full run starts.
+
+Done when: a preview has been shown for every target device.
+
 ## Step 4: Run k2pdfopt
 
-For each target device, run the resolved binary against the Step 2 input,
-writing to `<source-basename>-<device>.pdf` next to the source file.
-Attempt 1 of 3 per device.
+Only after the Step 3.75 preview has been shown, for each target device
+run the resolved binary against the Step 2 input, writing to
+`<source-basename>-<device>.pdf` next to the source file. Attempt 1 of 3
+per device.
 
 **Run every device's conversion in the background, in parallel**, not
 foreground/sequential. A real book easily takes 60-150s+ (color and
