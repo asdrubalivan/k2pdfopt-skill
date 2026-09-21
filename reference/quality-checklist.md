@@ -67,11 +67,13 @@ directly to a row in `decision-guide.md`'s symptom table.
 ## File weight for image-only (scanned) books
 
 Check with `scripts/check_output_weight.py --image-only`. Rule of thumb, not
-a hard law — flag it and consider lowering DPI/quality if avg KB/page
-exceeds roughly:
+a hard law — flag it if avg KB/page exceeds roughly:
 
-- **~180 KB/page** for a grayscale e-ink target — usually means DPI or
-  JPEG quality is set higher than the device's panel can even display.
+- **~180 KB/page** for a grayscale e-ink target — usually means DPI is set
+  higher than the device's panel can even display. See `decision-guide.md`'s
+  "File-weight tuning" section for what actually moves this number (and
+  the counterintuitive case where a lower `-jpg` quality makes it *worse*)
+  before spending retries on it.
 
 This check only applies to image-only output. A reflowed-text conversion of
 an image-only source, or any book with a real text layer, doesn't have a

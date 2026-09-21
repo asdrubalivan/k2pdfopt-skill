@@ -69,7 +69,15 @@ def main() -> int:
 
         images = [Image.open(p) for p in pages]
         first, rest = images[0], images[1:]
-        first.save(args.output_pdf, save_all=True, append_images=rest)
+        # resolution= is required: PIL's PDF writer defaults to 72dpi for the
+        # MediaBox if omitted, regardless of the pixels actually rasterized at
+        # --dpi. Confirmed the hard way: without it, a page rasterized at
+        # 300dpi got a MediaBox ~4x too large (e.g. 23x36in instead of the
+        # real ~5.5x8.7in). k2pdfopt still "succeeds" on that malformed
+        # input -- no crash, no error -- but its column/page-size heuristics
+        # read the inflated physical size and over-split every page into
+        # scrambled narrow strips.
+        first.save(args.output_pdf, save_all=True, append_images=rest, resolution=args.dpi)
 
     print(f"wrote {args.output_pdf} ({len(pages)} pages, {args.dpi} dpi, q{args.quality})")
     return 0

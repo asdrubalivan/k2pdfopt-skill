@@ -206,6 +206,33 @@ worth preserving and rasterizing the whole book would destroy it for
 minimal benefit. In that case, run k2pdfopt directly on the original file
 and only take the symptom-driven fallback below if it actually fails.
 
+## File-weight tuning for image-only output
+
+When `check_output_weight.py --image-only` flags `too_heavy`, two things
+about this are **not** what they look like at first:
+
+**Don't reach for `-jpg` to shrink a scanned/noisy book.** k2pdfopt's
+default (no `-jpg` at all) quantizes to `-bpc 4` — 4-bit grayscale (16
+levels), which compresses tightly for scanned text. `-jpg` is incompatible
+with `-bpc` (see `cli-reference.md`) and switching to it forces full 8-bit
+JPEG encoding instead. For photographic content JPEG usually wins, but for
+the grainy, dithered look of a scanned page it can lose — confirmed on a
+real 237-page scanned book: dropping `-jpg` quality from the 90 default to
+75 *raised* weight from 228 to 250 KB/page. If `-jpg` is already present
+in the invocation (e.g. carried over from a different mode), try removing
+it entirely before tuning its quality number.
+
+**`-odpi` has diminishing returns once weight is dominated by embedded
+photos/figures rather than text**, since those get carried through closer
+to their original resolution regardless of the page's output DPI. On that
+same book, cutting `-odpi` 300 → 260 (a 25% drop in pixel area) only moved
+228 → 226.6 KB/page. If a couple of `-odpi` steps don't move the number
+much, the book's weight is probably figure-bound, not DPI-bound — further
+cuts will cost legibility for little size gain, and the ~180 KB/page mark
+is a rule of thumb, not a hard requirement (see `quality-checklist.md`) —
+weigh a visually-clean but "heavy" output against burning the retry cap
+chasing it.
+
 ## Symptom → flag to adjust
 
 When a sampled output page fails the checklist in `quality-checklist.md`,
@@ -220,7 +247,7 @@ match the symptom to a flag, then confirm current syntax/defaults in
 | Text reflowed when the source was already well laid out | `-mode fw` or `-mode tm` (native output, no reflow) |
 | Font too small or too large to read on the device | `-dpi` (or `-dr` to scale everything at once) |
 | Images blurry, muddy, or over-compressed | `-dpi` up, `-jpg <quality>` up (default quality is 90) |
-| Output file far heavier than expected for an image-only book | `-dpi` down, `-jpg <quality>` down |
+| Output file far heavier than expected for an image-only book | `-odpi` down first — see "File-weight tuning" above before reaching for `-jpg` |
 | Margins too wide/narrow, content pushed to one side | `-m <val>` (margin to ignore), `-om <val>` (output margins) |
 | Low-contrast scan looks washed out | `-cmax`, `-g` (gamma), `-s` (sharpen), `-wt` (white threshold) |
 | Pages missing, duplicated, or out of order | `-p <pagelist>` used in the invocation, and the source's actual page count from `inspect_pdf.py` |
